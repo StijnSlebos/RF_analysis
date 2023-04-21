@@ -10,7 +10,10 @@ Experiment sample: Tomato with RF planar sensor
 import csv
 import pandas as pd
 import numpy as np
+
+from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
 import matplotlib.pyplot as plt
+
 from scipy.signal import find_peaks
 from pathlib import Path
 import datetime
@@ -82,15 +85,75 @@ dt = dt.transpose()
 # b = b.rename(columns={b.columns[0]:'frequency',b.columns[1]:'S11'})
 # b = b.set_index('frequency')
 
-measurement.plot(y='S11', figsize=(9,6))
-a = measurement['S11'].to_numpy()
+# measurement.plot(y='S11', figsize=(9,6))
+
+# a = measurement['S11'].to_numpy()
+peak_trend = []
+peaks = 0
+for i in range(0,datapoints):
+    a = dt[i]#[:400]
+    peaks_ = find_peaks(-a)
+    threshold = -40
+    while len(peaks_[0]) > 1:
+        peaks_ = find_peaks(-a, height=threshold)
+        threshold = threshold+1
+    if len(peaks_[0]) != 0:
+        peaks = peaks_[0][0]
+
+    peak_trend.append((i, measurement_range[peaks], a[peaks]))
+#  a[peaks],measurement_range[peaks]
+peak_trend = np.array(peak_trend)
+peak_trend = peak_trend.transpose()
 
 # print(b.head())
 
-# b.plot(y='Trace ID: ', figsize=(9,6))
+idx = 50
 
+# def customForward(*args):
+#     ax2 = plt.gca()
+#     fig2 = plt.gcf()
+#
+#     # get line object...
+#     line1 = ax2.get_lines()[0]
+#     line2 = ax2.get_lines()[1]
+#
+#     # ...create some new random data...
+#     idx = idx + 1
+#     # ...and update displayed data
+#     line1.set_ydata(dt[idx])
+#     line2.set_xdata(peak_trend[1][idx])
+#     line2.set_ydata(peak_trend[2][idx])
+#     # ax.set_ylim(min(newData), max(newData))
+#     # redraw canvas or new data won't be displayed
+#     fig2.canvas.draw()
+
+
+# monkey patch forward button callback
+# NavigationToolbar2Tk.forward = customForward
+
+# plot first data
+
+dt_trend = pd.DataFrame(peak_trend)
+dt_trend.to_csv('RF source/export.csv')
+
+# plot trend in peak value
 fig, ax = plt.subplots()
-ax.plot(measurement_range, measurements[0])
+ax.plot(peak_trend[0], peak_trend[2])
+# ax.set_ylim()
+ax.set_ylabel("lower peak dB")
+ax.set_xlabel("time")
+# plt.show()
 
+
+fig2, ax2 = plt.subplots()
+ax2.plot(measurement_range, dt[idx])
+ax2.plot(peak_trend[1][idx], peak_trend[2][idx], 'r+')
+ax2.set_ylim(-90, 0)
+
+fig3, ax3 = plt.subplots()
+ax3.plot(peak_trend[0], peak_trend[1])
+ax3.set_ylabel("f_peak (GHz)")
+ax3.set_xlabel("time")
+plt.show()
 
 a=1
