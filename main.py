@@ -25,19 +25,9 @@ pathlist = Path('RF source/Tomato plant  Run-1 Planar').glob('**/*.csv')
 pathlist4 = Path('../../../../Measurement Data/Exp4 _uncal tomato planar/P1_2023-04-21 10-52-22 0').glob('**/*.csv')
 pathlist3 = Path('../../../../Measurement Data/Exp 3 Uncal 3kz 1001 point planar tomato/P1 2023-04-19 11-45-51 0').glob('**/*.csv')
 
-for path in pathlist4:
+for path in pathlist:
     filelist.append(str(path))
 datapoints = len(filelist)
-
-# filelist2 = []
-# pathlist2 = Path("../../../../Measurement Data/Exp 3 Uncal 3kz 1001 point planar tomato/P1 2023-04-19 11-45-51 0").glob('**/Trace*.csv')
-# for path in pathlist2:
-#     filelist2.append(str(path))
-
-
-
-# with open('RF source/tr0.csv') as file:
-#     data = csv.reader(file, delimiter=',')
 
 measurements = pd.DataFrame({})
 measurement_range = []
@@ -57,16 +47,19 @@ measurement_range = []
 #     measurement = data.set_index('frequency')
 #     measurements = pd.concat([measurements, measurement], axis=1)
 
-# start_time = datetime.datetime(2023, 4, 12, hour=16, minute=30, second=20) # measurement 1
+# Configure start time and delta of measurement
+
+start_time = datetime.datetime(2023, 4, 12, hour=16, minute=30, second=20) # measurement 1
 # start_time = datetime.datetime(2023, 4, 18, hour=21, minute=41, second=53) # measurement 3
-start_time = datetime.datetime(2023, 4, 23, hour=10, minute=46, second=00) # measurement 4
+# start_time = datetime.datetime(2023, 4, 20, hour=10, minute=46, second=00) # measurement 4
+
 measurement_time = datetime.timedelta(seconds=200)
 
 for i in range(1,datapoints):
     csvdata = pd.read_csv(filelist[i])
     # Get data from right position in CSV/dataframe
-    #data = csvdata.iloc[13:,3:5]
-    data = csvdata
+    data = csvdata.iloc[13:,3:5]
+    # data = csvdata
     # Change types from strings to valid/ plotable types
     data[data.columns[0]] = data[data.columns[0]].astype('int64')
     data[data.columns[1]] = data[data.columns[1]].astype(float)
@@ -83,59 +76,93 @@ dt = dt.transpose()
 
 
 
-# data2 = pd.read_csv(filelist[0])
-# # data2.head()
-# # Get data from right position in CSV/dataframe
-# b = data2.iloc[13:,3:5]
-# #Change types from strings to valid/ plotable types
-# b[b.columns[0]] = b[b.columns[0]].astype('int64')
-# b[b.columns[1]] = b[b.columns[1]].astype(float)
-# # Reshape data
-# b = b.rename(columns={b.columns[0]:'frequency',b.columns[1]:'S11'})
-# b = b.set_index('frequency')
-
-# measurement.plot(y='S11', figsize=(9,6))
-
-# a = measurement['S11'].to_numpy()
-peak_trend = []
-peaks = 0
+#Find lower and upper peaks
+lower_peak_trend = []
+upper_peak_trend = []
+peaks_i=0
+peaks_u=0
 
 for i in range(0,datapoints-1):
-    a = dt[i][:500]
+    a = dt[i][:500] #exist in prior range (ignore right side of spectrum)
+
+    #Upper peak finding
     peaks_ = find_peaks(a)
     threshold = -40
     while len(peaks_[0]) > 1:
         peaks_ = find_peaks(a, height=threshold)
         threshold = threshold+1
     if len(peaks_[0]) != 0:
-        peaks = peaks_[0][0]
+        peaks_i = peaks_[0][0]
+    upper_peak_trend.append((start_time+measurement_time*i, measurement_range[peaks_i], a[peaks_i]))
 
-    peak_trend.append((start_time+measurement_time*i, measurement_range[peaks], a[peaks]))
+    #Lower peak finding
+    peaks_ = find_peaks(-a)
+    threshold = 40
+    while len(peaks_[0]) > 1:
+        peaks_ = find_peaks(-a, height=threshold)
+        threshold = threshold + 1
+    if len(peaks_[0]) != 0:
+        peaks_u = peaks_[0][0]
+    lower_peak_trend.append((start_time + measurement_time * i, measurement_range[peaks_u], a[peaks_u]))
+
+
 #  a[peaks],measurement_range[peaks]
-peak_trend = np.array(peak_trend)
-peak_trend = peak_trend.transpose()
+lower_peak_trend = np.array(lower_peak_trend)
+lower_peak_trend = lower_peak_trend.transpose()
+upper_peak_trend = np.array(upper_peak_trend)
+upper_peak_trend = upper_peak_trend.transpose()
 
-# print(b.head())
+lower_peak_trend_f_smooth = savitzky_golay(lower_peak_trend[1], 21, 3,deriv=0, rate=1)
+# lower_peak_trend_g_smooth = lower_peak_trend[2]
+# for i in range(1, len(lower_peak_trend_g_smooth)):
+#     if lower_peak_trend_g_smooth[i] > -15.77: # use threshold value for now
+#         lower_peak_trend_g_smooth[i] = lower_peak_trend_g_smooth[i-1]
+lower_peak_trend_g_smooth = savitzky_golay(lower_peak_trend[2], 21, 3,deriv=0, rate=1)
 
-idx = 50
+upper_peak_trend_f_smooth = savitzky_golay(upper_peak_trend[1], 21, 3,deriv=0, rate=1)
+upper_peak_trend_g_smooth = savitzky_golay(upper_peak_trend[2], 21, 3,deriv=0, rate=1)
 
-# def customForward(*args):
-#     ax2 = plt.gca()
-#     fig2 = plt.gcf()
-#
-#     # get line object...
-#     line1 = ax2.get_lines()[0]
-#     line2 = ax2.get_lines()[1]
-#
-#     # ...create some new random data...
-#     idx = idx + 1
-#     # ...and update displayed data
-#     line1.set_ydata(dt[idx])
-#     line2.set_xdata(peak_trend[1][idx])
-#     line2.set_ydata(peak_trend[2][idx])
-#     # ax.set_ylim(min(newData), max(newData))
-#     # redraw canvas or new data won't be displayed
-#     fig2.canvas.draw()
+idx = 80
+
+# ----------------------------------------------------------------------
+# raspberrypi_data_csv_path = Path('../../4-19_tomato_rf/STN_Experiment_2023-04-18_12_02_49.csv') # experiment 3
+raspberrypi_data_csv_path = Path('../../4-12_tomato_RF/pi_data_4_12/STN_Experiment_2023-04-12_13_57_46 (6).csv')
+
+raspberrypi_data = pd.read_csv(raspberrypi_data_csv_path)
+# data.loc[data['Sap_flow_SF4M (V)'] == 0 ]
+
+# Remove errors in data from unreliable SDI12 sensors
+rpi_data_reform = raspberrypi_data.drop(raspberrypi_data.loc[(raspberrypi_data['Sap_flow_SF4M (V)'] == "['']") | (raspberrypi_data['Leaf_Temperature_LC (°C)'] == "['']") |( raspberrypi_data['Sap_flow_SF4M (V).1'] == "['']") ].index)
+
+rpi_data_reform['Leaf_Temperature_LC (°C)']=rpi_data_reform['Leaf_Temperature_LC (°C)'].astype('float64')
+rpi_data_reform['Sap_flow_SF4M (V)']=rpi_data_reform['Sap_flow_SF4M (V)'].astype('float64')
+rpi_data_reform['Sap_flow_SF4M (V).1']=rpi_data_reform['Sap_flow_SF4M (V).1'].astype('float64')
+
+rpi_data_reform = rpi_data_reform.drop(rpi_data_reform.loc[(rpi_data_reform['Leaf_Temperature_LC (°C)'] == 0) | (rpi_data_reform['Sap_flow_SF4M (V)'] == 0) | (rpi_data_reform['Sap_flow_SF4M (V).1'] == 0)].index)
+
+rpi_data_reform[['date', 'time']] = rpi_data_reform['Timestamp'].str.split('_', expand=True)
+rpi_data_reform['date'] = rpi_data_reform['date'].astype('datetime64[ns]')
+rpi_data_reform['time'] = rpi_data_reform['time'].astype('timedelta64[ns]')
+
+rpi_data_out = rpi_data_reform[['date','time','A14_temperature (°C)','A14_relativeHumidity (%RH)','Leaf_Temperature_LC (°C)','Sap_flow_SF4M (V)','Sap_flow_SF4M (V).1','CO2 (ppm)']].to_numpy()
+rpi_data_out = rpi_data_out.transpose()
+# ----------------------------------------------------------------------
+
+#Load in stem data
+# stem_data_csv_path = Path('../../../../Measurement Data/stem/3rd exp.txt')
+stem_data_csv_path = Path('../../../../Measurement Data/stem/4th exp.txt')
+
+stem_data = pd.read_csv(stem_data_csv_path)
+# data.loc[data['Sap_flow_SF4M (V)'] == 0 ]
+
+#Remove errors in data from unreliable SDI12 sensors
+stem_data[['datetime', 'diameter']] = stem_data['DateTime\tDiameter (mm)'].str.split('\t', expand=True)
+stem_data['datetime'] = stem_data['datetime'].astype('datetime64[ns]')
+stem_data['diameter'] = stem_data['diameter'].astype('float64')
+
+stem_data_out = stem_data[['datetime', 'diameter']].to_numpy().transpose()
+# ----------------------------------------------------------------------
+
 
 
 # monkey patch forward button callback
@@ -143,10 +170,10 @@ idx = 50
 
 # plot first data
 
-dt_trend = pd.DataFrame(peak_trend)
+dt_trend = pd.DataFrame(lower_peak_trend)
 dt_trend.to_csv('RF source/export_measurement4.csv')
 
-date_format = mdates.DateFormatter('%H:%M')
+date_format = mdates.DateFormatter('%d/%d %H:%M')
 
 # plot trend in peak value
 # fig, ax = plt.subplots()
@@ -169,35 +196,66 @@ date_format = mdates.DateFormatter('%H:%M')
 
 fig2, ax2 = plt.subplots()
 ax2.plot(measurement_range, dt[idx])
-ax2.plot(peak_trend[1][idx], peak_trend[2][idx], 'r+')
+ax2.plot(lower_peak_trend[1][idx], lower_peak_trend[2][idx], 'r+')
+ax2.plot(upper_peak_trend[1][idx], upper_peak_trend[2][idx], 'r+')
 ax2.set_ylabel("transmission (dB)")
 ax2.set_xlabel("Frequency (GHz)")
 ax2.set_ylim(-90, 0)
 
-fig3, ax3 = plt.subplots(3,1, sharex=True)
-ax3[0].plot(peak_trend[0], peak_trend[1])
-peak_trend_smooth_sg = savitzky_golay(peak_trend[1], 21, 3,deriv=0, rate=1)
-ax3[0].plot(peak_trend[0], peak_trend_smooth_sg, color='green')
-
-ax3[1].plot(peak_trend[0], peak_trend[2])
-peak_trend_smooth = peak_trend[2]
-for i in range(1, len(peak_trend_smooth)):
-    if peak_trend_smooth[i] > -20.552: # use threshold value for now
-        peak_trend_smooth[i] = peak_trend_smooth[i-1]
-ax3[1].plot(peak_trend[0], peak_trend_smooth, color='red')
-peak_trend_smooth_sg = savitzky_golay(peak_trend[2], 21, 3,deriv=0, rate=1)
-ax3[1].plot(peak_trend[0], peak_trend_smooth_sg, color='green')
-# ax.set_ylim()
-ax3[1].set_ylabel("peak gain (dB)")
+fig3, ax3 = plt.subplots(7,1, sharex=True)
 
 
-ax3[0].set_ylabel("f_peak (GHz)")
-ax3[2].set_xlabel("time")
+# ax3[0].plot(lower_peak_trend[0], lower_peak_trend[1])
+ax3[0].plot(lower_peak_trend[0], lower_peak_trend_f_smooth, color='crimson', label='low-peak f-shift')
+
+# ax3[1].plot(lower_peak_trend[0], lower_peak_trend[2])
+ax3[1].plot(lower_peak_trend[0], lower_peak_trend_g_smooth, color='navy', label='low-peak g-shift')
+
+# ax3[2].plot(upper_peak_trend[0], upper_peak_trend[1])
+ax3[2].plot(upper_peak_trend[0], upper_peak_trend_f_smooth, color='crimson', label='high-peak f-shift')
+# ax3[2].set_yticks(np.arange(1.522, 1.528,step=0.001))
+
+# ax3[3].plot(upper_peak_trend[0], upper_peak_trend[2])
+ax3[3].plot(upper_peak_trend[0], upper_peak_trend_g_smooth, color='navy', label='high-peak g-shift')
+ax3[3].set_yticks(np.arange( -21, -19,step=0.2))
+
+ax3[4].plot(rpi_data_out[0]+rpi_data_out[1], rpi_data_out[2], color='coral', label='Air temperature')
+ax3[4].plot(rpi_data_out[0]+rpi_data_out[1], rpi_data_out[4], color='gold', label='Leaf Temperature')
+ax3[4].set_yticks(np.arange( 21, 24.5,step=0.5))
+ax3[4].set_ylim(21,24.5)
+
+ax3[5].plot(rpi_data_out[0]+rpi_data_out[1], (rpi_data_out[5]-0.5)/1.5, color='xkcd:chartreuse', label='Sap flow leaf')
+# ax33b = .twinx()
+ax3[5].plot(rpi_data_out[0]+rpi_data_out[1], (rpi_data_out[6]-0.5)/1.5, color='olive', label='Sap flow stem')
+
+# ax3[4].plot(rpi_data_out[0]+rpi_data_out[1], rpi_data_out[2])
+# ax3[6].plot(rpi_data_out[0]+rpi_data_out[1], rpi_data_out[7], color='green') #CO2
+ax3[6].plot(stem_data_out[0], stem_data_out[1], color='green', label='stem diameter')
+
+
+
+ax3[0].set_ylabel("[lower peak]\nf_peak (GHz)")
+ax3[1].set_ylabel("[lower peak]\npeak gain (dB)")
+ax3[2].set_ylabel("[upper peak]\nf_peak (GHz)")
+ax3[3].set_ylabel("[upper peak]\npeak gain (dB)")
+ax3[4].set_ylabel("temperature (C)")
+ax3[5].set_ylabel("sap Flow (relative %)")
+# ax33b.set_ylabel("sap Flow (relative %)", color='green')
+# ax3[6].set_ylabel("CO2 (ppm)")
+ax3[6].set_ylabel("Stem Diameter (mm)")
+ax3[6].set_xlabel("time")
 ax3[0].xaxis.set_major_formatter(date_format)
+# ax3[0].set_xticklabels(ax3[2].get_xticklabels(), rotation=45)
+plt.xticks(rotation=80, ha='right')
 
-ax3[0].grid(True, linestyle='-')
-ax3[1].grid(True, linestyle='-')
-ax3[2].grid(True, linestyle='-')
+ax3[0].set_xlim(lower_peak_trend[0][0], lower_peak_trend[0][-1])
+ax3[0].set_xticks(np.arange(lower_peak_trend[0][0], lower_peak_trend[0][-1], datetime.timedelta(hours=1)))
+
+
+for i in range(0, len(ax3)):
+    ax3[i].grid(True, linestyle='-')
+    ax3[i].legend(loc='upper right', fontsize='small')
+
 
 plt.show()
 
