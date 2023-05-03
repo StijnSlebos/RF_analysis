@@ -24,8 +24,10 @@ filelist = []
 pathlist = Path('RF source/Tomato plant  Run-1 Planar').glob('**/*.csv')
 pathlist4 = Path('../../../../Measurement Data/Exp4 _uncal tomato planar/P1_2023-04-21 10-52-22 0').glob('**/*.csv')
 pathlist3 = Path('../../../../Measurement Data/Exp 3 Uncal 3kz 1001 point planar tomato/P1 2023-04-19 11-45-51 0').glob('**/*.csv')
+pathlist_GrCh_1 = Path('../../../../Stijn Experiments/Experiments/Grow_chamber/RF/28_4/P2 2023-04-28 10-55-06 0').glob('**/*.csv')
 
-for path in pathlist:
+
+for path in pathlist_GrCh_1:
     filelist.append(str(path))
 datapoints = len(filelist)
 
@@ -49,17 +51,19 @@ measurement_range = []
 
 # Configure start time and delta of measurement
 
-start_time = datetime.datetime(2023, 4, 12, hour=16, minute=30, second=20) # measurement 1
+# start_time = datetime.datetime(2023, 4, 12, hour=16, minute=30, second=20) # measurement 1
 # start_time = datetime.datetime(2023, 4, 18, hour=21, minute=41, second=53) # measurement 3
 # start_time = datetime.datetime(2023, 4, 20, hour=10, minute=46, second=00) # measurement 4
+start_time = datetime.datetime(2023, 4, 26, hour=15, minute=42, second=14) # measurement 4
+
 
 measurement_time = datetime.timedelta(seconds=200)
 
 for i in range(1,datapoints):
     csvdata = pd.read_csv(filelist[i])
     # Get data from right position in CSV/dataframe
-    data = csvdata.iloc[13:,3:5]
-    # data = csvdata
+    # data = csvdata.iloc[13:,3:5]
+    data = csvdata
     # Change types from strings to valid/ plotable types
     data[data.columns[0]] = data[data.columns[0]].astype('int64')
     data[data.columns[1]] = data[data.columns[1]].astype(float)
@@ -96,6 +100,7 @@ for i in range(0,datapoints-1):
     upper_peak_trend.append((start_time+measurement_time*i, measurement_range[peaks_i], a[peaks_i]))
 
     #Lower peak finding
+    a = dt[i][60:400]
     peaks_ = find_peaks(-a)
     threshold = 40
     while len(peaks_[0]) > 1:
@@ -122,11 +127,13 @@ lower_peak_trend_g_smooth = savitzky_golay(lower_peak_trend[2], 21, 3,deriv=0, r
 upper_peak_trend_f_smooth = savitzky_golay(upper_peak_trend[1], 21, 3,deriv=0, rate=1)
 upper_peak_trend_g_smooth = savitzky_golay(upper_peak_trend[2], 21, 3,deriv=0, rate=1)
 
-idx = 80
+idx = 600
 
 # ----------------------------------------------------------------------
 # raspberrypi_data_csv_path = Path('../../4-19_tomato_rf/STN_Experiment_2023-04-18_12_02_49.csv') # experiment 3
-raspberrypi_data_csv_path = Path('../../4-12_tomato_RF/pi_data_4_12/STN_Experiment_2023-04-12_13_57_46 (6).csv')
+# raspberrypi_data_csv_path = Path('../../4-12_tomato_RF/pi_data_4_12/STN_Experiment_2023-04-12_13_57_46 (6).csv') # Experiment 1
+raspberrypi_data_csv_path = Path('../../Grow_chamber/ref_sens/GrCh_Experiment_2023-04-20_14_31_01 (4).csv')
+
 
 raspberrypi_data = pd.read_csv(raspberrypi_data_csv_path)
 # data.loc[data['Sap_flow_SF4M (V)'] == 0 ]
@@ -205,28 +212,34 @@ ax2.set_ylim(-90, 0)
 fig3, ax3 = plt.subplots(7,1, sharex=True)
 
 
-# ax3[0].plot(lower_peak_trend[0], lower_peak_trend[1])
+ax3[0].plot(lower_peak_trend[0], lower_peak_trend[1])
 ax3[0].plot(lower_peak_trend[0], lower_peak_trend_f_smooth, color='crimson', label='low-peak f-shift')
 
-# ax3[1].plot(lower_peak_trend[0], lower_peak_trend[2])
+ax3[1].plot(lower_peak_trend[0], lower_peak_trend[2])
 ax3[1].plot(lower_peak_trend[0], lower_peak_trend_g_smooth, color='navy', label='low-peak g-shift')
 
-# ax3[2].plot(upper_peak_trend[0], upper_peak_trend[1])
+ax3[2].plot(upper_peak_trend[0], upper_peak_trend[1])
 ax3[2].plot(upper_peak_trend[0], upper_peak_trend_f_smooth, color='crimson', label='high-peak f-shift')
-# ax3[2].set_yticks(np.arange(1.522, 1.528,step=0.001))
+ax3[2].set_yticks(np.arange(1.713*10**9, 1.723*10**9,step=0.0025*10**9))
+ax3[2].set_ylim(1.713*10**9, 1.723*10**9)
 
-# ax3[3].plot(upper_peak_trend[0], upper_peak_trend[2])
+ax3[3].plot(upper_peak_trend[0], upper_peak_trend[2])
 ax3[3].plot(upper_peak_trend[0], upper_peak_trend_g_smooth, color='navy', label='high-peak g-shift')
-ax3[3].set_yticks(np.arange( -21, -19,step=0.2))
+ax3[3].set_yticks(np.arange( -19.8, -19,step=0.2))
+ax3[3].set_ylim(-19.8, -19)
+
 
 ax3[4].plot(rpi_data_out[0]+rpi_data_out[1], rpi_data_out[2], color='coral', label='Air temperature')
 ax3[4].plot(rpi_data_out[0]+rpi_data_out[1], rpi_data_out[4], color='gold', label='Leaf Temperature')
-ax3[4].set_yticks(np.arange( 21, 24.5,step=0.5))
-ax3[4].set_ylim(21,24.5)
+ax3[4].set_yticks(np.arange( 18, 20.5,step=0.5))
+ax3[4].set_ylim(18, 20.5)
 
 ax3[5].plot(rpi_data_out[0]+rpi_data_out[1], (rpi_data_out[5]-0.5)/1.5, color='xkcd:chartreuse', label='Sap flow leaf')
 # ax33b = .twinx()
 ax3[5].plot(rpi_data_out[0]+rpi_data_out[1], (rpi_data_out[6]-0.5)/1.5, color='olive', label='Sap flow stem')
+ax3[5].set_yticks(np.arange( -0.05, 0.2,step=0.05))
+ax3[5].set_ylim(-0.05, 0.2)
+
 
 # ax3[4].plot(rpi_data_out[0]+rpi_data_out[1], rpi_data_out[2])
 # ax3[6].plot(rpi_data_out[0]+rpi_data_out[1], rpi_data_out[7], color='green') #CO2
@@ -248,9 +261,11 @@ ax3[0].xaxis.set_major_formatter(date_format)
 # ax3[0].set_xticklabels(ax3[2].get_xticklabels(), rotation=45)
 plt.xticks(rotation=80, ha='right')
 
-ax3[0].set_xlim(lower_peak_trend[0][0], lower_peak_trend[0][-1])
-ax3[0].set_xticks(np.arange(lower_peak_trend[0][0], lower_peak_trend[0][-1], datetime.timedelta(hours=1)))
+ax3[0].set_xlim(lower_peak_trend[0][0], lower_peak_trend[0][-1]) # Set boundaries for rf measurements
+# ax3[0].set_xlim(rpi_data_out[0][2905]+rpi_data_out[1][2905], rpi_data_out[0][-1]+rpi_data_out[1][-1]) # Set boundaries for sense data
 
+ax3[0].set_xticks(np.arange(lower_peak_trend[0][0], lower_peak_trend[0][-1], datetime.timedelta(hours=1)))# Set boundaries for rf measurements
+# ax3[0].set_xticks(np.arange(rpi_data_out[0][2905]+rpi_data_out[1][2905], rpi_data_out[0][-1]+rpi_data_out[1][-1], datetime.timedelta(hours=1)))
 
 for i in range(0, len(ax3)):
     ax3[i].grid(True, linestyle='-')
