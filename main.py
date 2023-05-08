@@ -68,7 +68,7 @@ start_time = datetime.datetime(2023, 4, 29, hour=5, minute=40, second=2) # measu
 measurement_time = datetime.timedelta(seconds=202)
 
 for i in range(0,files,2):
-    csvdata = pd.read_csv(filelist[i+1])
+    csvdata = pd.read_csv(filelist[i])
     # Get data from right position in CSV/dataframe
     # data = csvdata.iloc[13:,3:5]
     data = csvdata.iloc[:,0:2]
