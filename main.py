@@ -28,16 +28,16 @@ def numericalSort(value):
     return parts
 
 filelist = []
-pathlist = Path('RF source/Tomato plant  Run-1 Planar').glob('**/*.csv')
-pathlist4 = Path('../../../../Measurement Data/Exp4 _uncal tomato planar/P1_2023-04-21 10-52-22 0').glob('**/*.csv')
-pathlist3 = Path('../../../../Measurement Data/Exp 3 Uncal 3kz 1001 point planar tomato/P1 2023-04-19 11-45-51 0').glob('**/*.csv')
+pathlist = Path('RF source/Tomato plant  Run-1 Planar').glob('**/Trace Capture*.csv')
+pathlist4 = Path('../../../../Measurement Data/Exp4 _uncal tomato planar/P1_2023-04-21 10-52-22 0').glob('**/Trace Capture*.csv')
+pathlist3 = Path('../../../../Measurement Data/Exp 3 Uncal 3kz 1001 point planar tomato/P1 2023-04-19 11-45-51 0').glob('**/Trace Capture*.csv')
 pathlist_GrCH2 = Path('RF source/3_5/3_5/P3 full scale/PA/PA2 2023-05-03 12-22-08 0').glob('**/Trace Capture*.csv')
 
 for path in pathlist_GrCH2:
     filelist.append(str(path))
 filelist = sorted(filelist, key=numericalSort)
 files = len(filelist)
-datapoints = (files)/2
+datapoints = (files)
 
 measurements = pd.DataFrame({})
 measurement_range = []
@@ -60,9 +60,9 @@ measurement_range = []
 # Configure start time and delta of measurement
 
 # start_time = datetime.datetime(2023, 4, 12, hour=16, minute=30, second=20) # measurement 1
-# start_time = datetime.datetime(2023, 4, 18, hour=21, minute=41, second=53) # measurement 3
+start_time = datetime.datetime(2023, 4, 18, hour=21, minute=41, second=53) # measurement 3
 # start_time = datetime.datetime(2023, 4, 20, hour=10, minute=46, second=00) # measurement 4
-start_time = datetime.datetime(2023, 4, 29, hour=5, minute=40, second=2) # measurement P3-2
+# start_time = datetime.datetime(2023, 4, 29, hour=5, minute=40, second=2) # measurement P3-2
 
 
 measurement_time = datetime.timedelta(seconds=202)
@@ -138,9 +138,9 @@ upper_peak_trend_g_smooth = savitzky_golay(upper_peak_trend[2], 21, 3,deriv=0, r
 idx = 80
 
 # ----------------------------------------------------------------------
-# raspberrypi_data_csv_path = Path('../../4-19_tomato_rf/STN_Experiment_2023-04-18_12_02_49.csv') # experiment 3
+raspberrypi_data_csv_path = Path('../../4-19_tomato_rf/STN_Experiment_2023-04-18_12_02_49.csv') # experiment 3
 # raspberrypi_data_csv_path = Path('../../4-12_tomato_RF/pi_data_4_12/STN_Experiment_2023-04-12_13_57_46 (6).csv')
-raspberrypi_data_csv_path = Path('RPi_sensor_source/GrCh_Experiment_2023-04-20_14_31_01 (3).csv')
+# raspberrypi_data_csv_path = Path('RPi_sensor_source/GrCh_Experiment_2023-04-20_14_31_01 (3).csv')
 
 
 raspberrypi_data = pd.read_csv(raspberrypi_data_csv_path)
