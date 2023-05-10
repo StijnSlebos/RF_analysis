@@ -30,12 +30,15 @@ def numericalSort(value):
 folders = []
 index_files = []
 
-double_sensor = True
+double_sensor = False
 # pathlist = Path('../../../../Measurement Data/Trolly measurement/1st measurement').glob('**/Trace Capture*.csv')
 
 # pathlist=Path('../../../../Measurement Data/Trolly measurement/2nd measurement').glob('**/P*')
-# pathlist=Path('../Experiments/May 5th-8th office trolley tomato experiments/Trolly measurement/2nd measurement').glob('**/P*')
-pathlist=Path('../Experiments/UNIFARM may experiments/Plant set 1/May 3rd RF/P3 full scale/PA').glob('**/P*')
+
+pathstring = '../Experiments/UNIFARM may experiments/Plant set 1/April 28th RF/Exp1- trail & dry run/Exp1 with only planar'
+# pathstring = '../Experiments/May 5th-8th office trolley tomato experiments/Trolly measurement/2nd measurement'
+
+pathlist=Path(pathstring).glob('**/P*')
 
 # pathlist=Path('../../../../Measurement Data/Exp unifarm/Exp1- trail & dry run/Exp1 with only planar').glob('**/P*')
 # pathlist=Path('../../../../Measurement Data/Dry run/P4/part 2').glob('**/P*')
@@ -102,7 +105,8 @@ for i in range(0,sets):
 
 
 # measurement_time = datetime.timedelta(seconds=202)
-start_time = total_index.loc[total_index['step']==1]['time'].values[0]
+# start_time = total_index.loc[total_index['step']==1]['time'].values[0]
+start_time = total_index.iloc[0]['time']
 samples = total_index['step'].tail(1).values[0]
 samples = total_index.shape[0]-1
 # end_time = total_index.loc[total_index['step']==samples]['time'].values[0]
@@ -210,6 +214,9 @@ rpi_data_reform = rpi_data_reform.drop(rpi_data_reform.loc[(rpi_data_reform['Lea
 rpi_data_reform[['date', 'time']] = rpi_data_reform['Timestamp'].str.split('_', expand=True)
 rpi_data_reform['date'] = rpi_data_reform['date'].astype('datetime64[ns]')
 rpi_data_reform['time'] = rpi_data_reform['time'].astype('timedelta64[ns]')
+rpi_data_reform['Timestamp'] = rpi_data_reform['Timestamp'].str.split('_', expand=True)[0]+" "+rpi_data_reform['Timestamp'].str.split('_', expand=True)[1]
+rpi_data_reform['Timestamp'] = rpi_data_reform['Timestamp'].astype('datetime64[ns]')
+rpidf = rpi_data_reform.set_index('Timestamp')
 
 rpi_data_out = rpi_data_reform[['date','time','A14_temperature (°C)','A14_relativeHumidity (%RH)','Leaf_Temperature_LC (°C)','Sap_flow_SF4M (V)','Sap_flow_SF4M (V).1','CO2 (ppm)']].to_numpy()
 rpi_data_out = rpi_data_out.transpose()
@@ -217,17 +224,20 @@ rpi_data_out = rpi_data_out.transpose()
 
 #Load in stem data
 # stem_data_csv_path = Path('../../../../Measurement Data/stem/3rd exp.txt')
-# stem_data_csv_path = Path('../../../../Measurement Data/stem/4th exp.txt')
+# stem_data_csv_path = Path('../Experiments/UNIFARM may experiments/Ground truth measurement/all days stems diameter unifarm.txt')
+stem_data_csv_path = Path('../Experiments/May 5th-8th office trolley tomato experiments/Trolly measurement/new 501 trolley.txt')
 
-# stem_data = pd.read_csv(stem_data_csv_path)
+
+stem_data = pd.read_csv(stem_data_csv_path)
 # data.loc[data['Sap_flow_SF4M (V)'] == 0 ]
 
 #Remove errors in data from unreliable SDI12 sensors
-# stem_data[['datetime', 'diameter']] = stem_data['DateTime\tDiameter (mm)'].str.split('\t', expand=True)
-# stem_data['datetime'] = stem_data['datetime'].astype('datetime64[ns]')
-# stem_data['diameter'] = stem_data['diameter'].astype('float64')
+stem_data[['datetime', 'diameter']] = stem_data['DateTime\tDiameter (mm)'].str.split('\t', expand=True)
+stem_data['datetime'] = stem_data['datetime'].astype('datetime64[ns]')
+stem_data['diameter'] = stem_data['diameter'].astype('float64')
+stdf = stem_data.set_index('datetime')
 #
-# stem_data_out = stem_data[['datetime', 'diameter']].to_numpy().transpose()
+stem_data_out = stem_data[['datetime', 'diameter']].to_numpy().transpose()
 # ----------------------------------------------------------------------
 
 
@@ -236,9 +246,19 @@ rpi_data_out = rpi_data_out.transpose()
 # NavigationToolbar2Tk.forward = customForward
 
 # plot first data
+end_time_str =  str(end_time.year)+"-"+str(end_time.month)+"-"+str(end_time.day)+" "+str(end_time.hour)+":"+str(end_time.minute)+":"+str(end_time.second)
+start_time_str = str(start_time.year)+"-"+str(start_time.month)+"-"+str(start_time.day)+" "+str(start_time.hour)+":"+str(start_time.minute)+":"+str(start_time.second)
+stdf = stdf[start_time_str:end_time_str]
 
-# dt_trend = pd.DataFrame(lower_peak_trend)
-# dt_trend.to_csv('RF source/export_measurement4.csv')
+data_to_save = {'time': lower_peak_trend[0].transpose() , "[lower peak]\nf_peak (GHz)": lower_peak_trend[1].transpose(),"[lower peak]\npeak gain (dB)": lower_peak_trend[2].transpose(),  "[upper peak]\nf_peak (GHz)": upper_peak_trend[1].transpose(), "[upper peak]\npeak gain (dB)":upper_peak_trend[2].transpose()}
+dt_trend = pd.DataFrame(data=data_to_save)
+dt_trend = dt_trend.set_index('time')
+
+rpidf = rpidf.resample('30S').mean()
+rpidf = rpidf[start_time_str:end_time_str]
+
+exportdt = stdf.join(dt_trend, how='outer').join(rpidf, how='outer')
+exportdt.to_csv(pathstring + '/trace_trends.csv')
 
 date_format = mdates.DateFormatter('%d/%d %H:%M')
 
@@ -269,7 +289,7 @@ ax2.set_ylabel("transmission (dB)")
 ax2.set_xlabel("Frequency (GHz)")
 ax2.set_ylim(-90, 0)
 
-fig3, ax3 = plt.subplots(6,1, sharex=True)
+fig3, ax3 = plt.subplots(7,1, sharex=True)
 
 
 ax3[0].plot(lower_peak_trend[0], lower_peak_trend[1])
@@ -301,7 +321,7 @@ ax3[5].plot(rpi_data_out[0]+rpi_data_out[1], (rpi_data_out[6]-0.5)/1.5, color='o
 
 # ax3[4].plot(rpi_data_out[0]+rpi_data_out[1], rpi_data_out[2])
 # ax3[6].plot(rpi_data_out[0]+rpi_data_out[1], rpi_data_out[7], color='green') #CO2
-# ax3[6].plot(stem_data_out[0], stem_data_out[1], color='green', label='stem diameter')
+ax3[6].plot(stem_data_out[0], stem_data_out[1], color='green', label='stem diameter')
 
 
 
@@ -313,7 +333,7 @@ ax3[4].set_ylabel("temperature (C)")
 ax3[5].set_ylabel("sap Flow (relative %)")
 # ax33b.set_ylabel("sap Flow (relative %)", color='green')
 # ax3[6].set_ylabel("CO2 (ppm)")
-# ax3[6].set_ylabel("Stem Diameter (mm)")
+ax3[6].set_ylabel("Stem Diameter (mm)")
 ax3[5].set_xlabel("time")
 ax3[0].xaxis.set_major_formatter(date_format)
 # ax3[0].set_xticklabels(ax3[2].get_xticklabels(), rotation=45)
