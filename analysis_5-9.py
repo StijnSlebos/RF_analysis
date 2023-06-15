@@ -20,6 +20,8 @@ from scipy.signal import find_peaks
 from pathlib import Path
 import datetime
 
+from absolute_humidity import calculate_absolute_humidity
+
 import re
 numbers = re.compile(r'(\d+)')
 def numericalSort(value):
@@ -31,13 +33,27 @@ folders = []
 index_files = []
 
 double_sensor = False
+three_sensor = True
 # pathlist = Path('../../../../Measurement Data/Trolly measurement/1st measurement').glob('**/Trace Capture*.csv')
 
 # pathlist=Path('../../../../Measurement Data/Trolly measurement/2nd measurement').glob('**/P*')
 
-pathstring = '../Experiments/UNIFARM may experiments/Plant set 1/April 28th RF/Exp1- trail & dry run/Exp1 with only planar'
-# pathstring = '../Experiments/May 5th-8th office trolley tomato experiments/Trolly measurement/2nd measurement'
+# pathstring = '../Experiments/UNIFARM may experiments/Plant set 1/April 28th RF/Exp1- trail & dry run/Exp1 with only planar'
+# pathstring = '../Experiments/UNIFARM may experiments/Plant set 1/May 3rd RF/P3 full scale/PA'
 
+# pathstring = '../Experiments/UNIFARM may experiments/Plant set 2/Dry run/P4/part 2'
+# Path('../Experiments/June 6th Unifarm humidity runs/15-6-2023 3 sensor humidity high resolution/3 sens 2nd run')
+# pathstring = '../Experiments/UNIFARM may experiments/Plant set 3/may 26th humidity dry run/humidity run'
+# pathstring = '../Experiments/May 5th-8th office trolley tomato experiments/Trolly measurement/2nd measurement'
+# pathstring = '../Experiments/April 12th office tomato RF experiment/rf_tomato_analysis/RF source/3_5/3_5/P3 full scale'
+# pathstring = '../Experiments/April 20th office tomato RF experiment 4/Exp4 _uncal tomato planar'
+# pathstring = '../Experiments/May 30th Humidity run, trolley/Humidity Run/4350B no shield'
+# pathstring = '../Experiments/May 30th Humidity run, trolley/Humidity Run/copper shield only-4350B- Run2'
+# pathstring = '../Experiments/May 30th Humidity run, trolley/Humidity Run/3003 no shield'
+# pathstring = '../Experiments/June 6th Unifarm humidity runs/6-6-2023 Unifarm Humidity 1st run/70-RH TEMP 16-21 deg'
+# pathstring = '../Experiments/June 6th Unifarm humidity runs/7-6-2023 humidity Run with full stijn shield/RH change with 16-21 deg change'
+# pathstring = '../Experiments/June 6th Unifarm humidity runs/12-6-2023 3 sensor humidity run/3 Sense all data'
+pathstring = '../Experiments/June 6th Unifarm humidity runs/15-6-2023 3 sensor humidity high resolution/3 sens 2nd run'
 pathlist=Path(pathstring).glob('**/P*')
 
 # pathlist=Path('../../../../Measurement Data/Exp unifarm/Exp1- trail & dry run/Exp1 with only planar').glob('**/P*')
@@ -66,6 +82,19 @@ for i in range(0,sets):
         index['filename'] = index['filename'].str.replace('Trace', folders[i] + "\\Trace")
         index['filename2'] = index['filename2'].astype('string')
         index['filename2'] = index['filename2'].str.replace('Trace', folders[i] + "\\Trace")
+        total_index = pd.concat([total_index, index])
+    elif three_sensor:
+        index = index.iloc[6:, 0:5]  # switch 4->5 when having two sensors
+        index = index.rename(columns={index.columns[0]: 'time', index.columns[1]: 'step', index.columns[2]: 'filename',
+                                      index.columns[3]: 'filename2', index.columns[4]: 'filename3'})
+        index['time'] = index['time'].astype('datetime64[ns]')
+        index['step'] = index['step'].astype('int64')
+        index['filename'] = index['filename'].astype('string')
+        index['filename'] = index['filename'].str.replace('Trace', folders[i] + "\\Trace")
+        index['filename2'] = index['filename2'].astype('string')
+        index['filename2'] = index['filename2'].str.replace('Trace', folders[i] + "\\Trace")
+        index['filename3'] = index['filename3'].astype('string')
+        index['filename3'] = index['filename3'].str.replace('Trace', folders[i] + "\\Trace")
         total_index = pd.concat([total_index, index])
     else:
         index = index.iloc[4:, 0:3]
@@ -119,7 +148,7 @@ measurement_range = []
 
 for i in range(0,samples):
     # csvdata = pd.read_csv(total_index.loc[total_index['step']==i+1]['filename'].values[0]+'.csv')
-    csvdata = pd.read_csv(total_index.iloc[i]['filename']+'.csv')
+    csvdata = pd.read_csv(total_index.iloc[i]['filename3']+'.csv')
 
 
     # Get data from right position in CSV/dataframe
@@ -152,7 +181,7 @@ peaks_i=0
 peaks_u=0
 
 for i in range(0,samples):
-    a = dt[i] #exist in prior range (ignore right side of spectrum)
+    a = dt[i]#[:450] #exist in prior range (ignore right side of spectrum)
 
     #Upper peak finding
     peaks_ = find_peaks(a)
@@ -194,9 +223,16 @@ upper_peak_trend_g_smooth = savitzky_golay(upper_peak_trend[2], 45, 3,deriv=0, r
 idx = 80
 
 # ----------------------------------------------------------------------
-raspberrypi_data_csv_path = Path('../Experiments/UNIFARM may experiments/Ground truth measurement/GrCh_Experiment_2023-04-20_14_31_01.csv')
+# raspberrypi_data_csv_path = Path('../Experiments/UNIFARM may experiments/Ground truth measurement/GrCh_Experiment_2023-04-20_14_31_01.csv')
 # raspberrypi_data_csv_path = Path('../../4-12_tomato_RF/pi_data_4_12/STN_Experiment_2023-04-12_13_57_46 (6).csv')
 # raspberrypi_data_csv_path = Path('RPi_sensor_source/GrCh_Experiment_2023-04-20_14_31_01 (3).csv')
+# raspberrypi_data_csv_path = Path('../Experiments/UNIFARM may experiments/Plant set 3/may 26th humidity dry run/GrCh_Experiment_2023-05-16_11_41_54 (1).csv')
+# raspberrypi_data_csv_path = Path('../Experiments/April 12th office tomato RF experiment/pi_data_4_12/STN_Experiment_2023-04-12_13_57_46 (6).csv')
+# raspberrypi_data_csv_path = Path('../Experiments/June 6th Unifarm humidity runs/GrCh_Experiment_2023-06-06_09_52_27 (1).csv')
+# raspberrypi_data_csv_path = Path('../Experiments/June 6th Unifarm humidity runs/12-6-2023 3 sensor humidity run/GrCh_Experiment_2023-06-06_09_52_27 (3).csv')
+raspberrypi_data_csv_path = Path('../Experiments/June 6th Unifarm humidity runs/15-6-2023 3 sensor humidity high resolution/GrCh_Experiment_2023-06-14_12_27_22.csv')
+# raspberrypi_data_csv_path = Path('../Experiments/UNIFARM may experiments/Plant set 3/GrCh_Experiment_2023-05-16_11_41_54 (1).csv')
+
 
 
 raspberrypi_data = pd.read_csv(raspberrypi_data_csv_path)
@@ -218,14 +254,26 @@ rpi_data_reform['Timestamp'] = rpi_data_reform['Timestamp'].str.split('_', expan
 rpi_data_reform['Timestamp'] = rpi_data_reform['Timestamp'].astype('datetime64[ns]')
 rpidf = rpi_data_reform.set_index('Timestamp')
 
-rpi_data_out = rpi_data_reform[['date','time','A14_temperature (°C)','A14_relativeHumidity (%RH)','Leaf_Temperature_LC (°C)','Sap_flow_SF4M (V)','Sap_flow_SF4M (V).1','CO2 (ppm)']].to_numpy()
+rpi_data_out = rpi_data_reform[['date','time','A14_temperature (°C)','A14_relativeHumidity (%RH)','Leaf_Temperature_LC (°C)','Sap_flow_SF4M (V)','Sap_flow_SF4M (V).1','CO2 (ppm)','T14_d1','T14_d2','T14_d3','A14_atmosphericPressure (kPa)']].to_numpy()
 rpi_data_out = rpi_data_out.transpose()
 # ----------------------------------------------------------------------
+rpi_raw = rpi_data_out[8] #vwc
+rpi_soilT = rpi_data_out[9]
+rpi_bulkec = rpi_data_out[10]
 
+rpi_e_b = (2.887 * 10**(-9) * rpi_raw**(3) - 2.080 * 10**(-5) * rpi_raw**(2) + 5.276 * 10**(-2) * rpi_raw - 43.39)**2
+rpi_e_p = 80.3-.37*(rpi_soilT-20)
+rpi_pore_waterec = (rpi_e_p*rpi_bulkec)/(rpi_e_b-4.1)
+rpi_bulkec_25d = rpi_bulkec/(1+0.019*(rpi_soilT-25))
+rpi_VWC = 3.879*10**(-4)*rpi_raw - 0.6956
+
+rpi_absolute_humidity = calculate_absolute_humidity(rpi_data_out[3], rpi_data_out[2], rpi_data_out[11])
+
+# ----------------------------------------------------------------------
 #Load in stem data
 # stem_data_csv_path = Path('../../../../Measurement Data/stem/3rd exp.txt')
-# stem_data_csv_path = Path('../Experiments/UNIFARM may experiments/Ground truth measurement/all days stems diameter unifarm.txt')
-stem_data_csv_path = Path('../Experiments/May 5th-8th office trolley tomato experiments/Trolly measurement/new 501 trolley.txt')
+stem_data_csv_path = Path('../Experiments/UNIFARM may experiments/Ground truth measurement/all days stems diameter unifarm.txt')
+# stem_data_csv_path = Path('../Experiments/May 5th-8th office trolley tomato experiments/Trolly measurement/new 501 trolley.txt')
 
 
 stem_data = pd.read_csv(stem_data_csv_path)
@@ -260,7 +308,7 @@ rpidf = rpidf[start_time_str:end_time_str]
 exportdt = stdf.join(dt_trend, how='outer').join(rpidf, how='outer')
 exportdt.to_csv(pathstring + '/trace_trends.csv')
 
-date_format = mdates.DateFormatter('%d/%d %H:%M')
+date_format = mdates.DateFormatter('%d/%m %H:%M')
 
 # plot trend in peak value
 # fig, ax = plt.subplots()
@@ -289,26 +337,29 @@ ax2.set_ylabel("transmission (dB)")
 ax2.set_xlabel("Frequency (GHz)")
 ax2.set_ylim(-90, 0)
 
-fig3, ax3 = plt.subplots(7,1, sharex=True)
+plt.rcParams["font.weight"] = "bold"
+plt.rcParams["axes.labelweight"] = "bold"
+fig3, ax3 = plt.subplots(9,1, sharex=True)
+
 
 
 ax3[0].plot(lower_peak_trend[0], lower_peak_trend[1])
-ax3[0].plot(lower_peak_trend[0], lower_peak_trend_f_smooth, color='crimson', label='low-peak f-shift')
+# ax3[0].plot(lower_peak_trend[0], lower_peak_trend_f_smooth, color='crimson', label='low-peak f-shift')
 # ax3[0].set_ylim(9.6*10**8,9.9*10**8)
 
 ax3[1].plot(lower_peak_trend[0], lower_peak_trend[2])
-ax3[1].plot(lower_peak_trend[0], lower_peak_trend_g_smooth, color='navy', label='low-peak g-shift')
+# ax3[1].plot(lower_peak_trend[0], lower_peak_trend_g_smooth, color='navy', label='low-peak g-shift')
 # ax3[1].set_ylim(-75,-65)
 
 ax3[2].plot(upper_peak_trend[0], upper_peak_trend[1])
-ax3[2].plot(upper_peak_trend[0], upper_peak_trend_f_smooth, color='crimson', label='high-peak f-shift')
-# ax3[2].set_yticks(np.arange(1.522, 1.528,step=0.001))
+# ax3[2].plot(upper_peak_trend[0], upper_peak_trend_f_smooth, color='crimson', label='high-peak f-shift')
+# ax3[2].set_yticks(np.arange(1.7075, 1.7125,step=0.00125)*10**9)
 # ax3[2].set_ylim(1.4*10**9,1.5*10**9)
 
 ax3[3].plot(upper_peak_trend[0], upper_peak_trend[2])
-ax3[3].plot(upper_peak_trend[0], upper_peak_trend_g_smooth, color='navy', label='high-peak g-shift')
+# ax3[3].plot(upper_peak_trend[0], upper_peak_trend_g_smooth, color='navy', label='high-peak g-shift')
 # ax3[3].set_ylim(-22,-19)
-# ax3[3].set_yticks(np.arange( -21, -19,step=0.2))
+# ax3[3].set_yticks(np.arange( -12.2, -11.5,step=0.1))
 
 ax3[4].plot(rpi_data_out[0]+rpi_data_out[1], rpi_data_out[2], color='coral', label='Air temperature')
 ax3[4].plot(rpi_data_out[0]+rpi_data_out[1], rpi_data_out[4], color='gold', label='Leaf Temperature')
@@ -323,17 +374,22 @@ ax3[5].plot(rpi_data_out[0]+rpi_data_out[1], (rpi_data_out[6]-0.5)/1.5, color='o
 # ax3[6].plot(rpi_data_out[0]+rpi_data_out[1], rpi_data_out[7], color='green') #CO2
 ax3[6].plot(stem_data_out[0], stem_data_out[1], color='green', label='stem diameter')
 
+ax3[7].plot(rpi_data_out[0]+rpi_data_out[1], rpi_data_out[3], color='coral', label='Relative Humidity')
+# ax3[8].plot(rpi_data_out[0]+rpi_data_out[1], rpi_VWC, color='cornflowerblue', label='soil: Volumetric Water Content')
+ax3[8].plot(rpi_data_out[0]+rpi_data_out[1], rpi_absolute_humidity, color='cornflowerblue', label='absolute humidity')
 
 
 ax3[0].set_ylabel("[lower peak]\nf_peak (GHz)")
 ax3[1].set_ylabel("[lower peak]\npeak gain (dB)")
 ax3[2].set_ylabel("[upper peak]\nf_peak (GHz)")
 ax3[3].set_ylabel("[upper peak]\npeak gain (dB)")
-ax3[4].set_ylabel("temperature (C)")
-ax3[5].set_ylabel("sap Flow (relative %)")
+ax3[4].set_ylabel("temperature\n(C)")
+ax3[5].set_ylabel("Sap Flow\n(relative %)")
 # ax33b.set_ylabel("sap Flow (relative %)", color='green')
 # ax3[6].set_ylabel("CO2 (ppm)")
-ax3[6].set_ylabel("Stem Diameter (mm)")
+ax3[6].set_ylabel("Stem Diameter\n(mm)")
+ax3[7].set_ylabel("Relative Humidity\n(RH%)")
+ax3[8].set_ylabel("Absolute Humidity\n(g/m3)")
 ax3[5].set_xlabel("time")
 ax3[0].xaxis.set_major_formatter(date_format)
 # ax3[0].set_xticklabels(ax3[2].get_xticklabels(), rotation=45)
@@ -345,7 +401,7 @@ ax3[0].set_xticks(np.arange(lower_peak_trend[0][10], lower_peak_trend[0][-1], da
 
 for i in range(0, len(ax3)):
     ax3[i].grid(True, linestyle='-')
-    ax3[i].legend(loc='upper right', fontsize='small')
+    ax3[i].legend(loc='upper right', fontsize='x-large', prop={'weight':'bold'})
 
 
 plt.show()

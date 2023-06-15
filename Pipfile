@@ -8,6 +8,10 @@ pandas = "*"
 matplotlib = "*"
 scipy = "*"
 path = "*"
+atmos = "*"
+numexpr = "*"
+six = "*"
+nose = "*"
 
 [dev-packages]
 
